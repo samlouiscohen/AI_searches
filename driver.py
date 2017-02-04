@@ -76,14 +76,14 @@ class Solver:
 			downState = self.buildNewState(pState, pState.blankIndex, action)
 			childStates.append(downState)
 
-		#Left check (i is not in first column, then we can swap left)
+		#Left column check (i is not in first column, then we can swap left)
 		if blankIndex % self.n != 0:
 			action = "L"
 			leftState = self.buildNewState(pState, pState.blankIndex, action)
 			childStates.append(leftState)
 
-		#Right check
-		if blankIndex % (self.n-1) !=0:
+		#Right column check
+		if (blankIndex + 1) % self.n !=0:
 			action = "R"
 			rightState = self.buildNewState(pState, pState.blankIndex, action)
 			childStates.append(rightState)
@@ -112,9 +112,7 @@ class Solver:
 		else:
 			newBlankIndex = blankIndex + 1 #right
 
-
-
-		
+		#Swap blank with adjacent tile
 		newConfig[blankIndex] = newConfig[newBlankIndex]
 		newConfig[newBlankIndex] = 0
 
@@ -131,18 +129,46 @@ class Solver:
 		return True
 
 
+	# # def getPath(self, state, pathCost):
+	# def getPath(self, state, pathCost):
+
+
+	# 	#pathCost = 0
+
+	# 	if(state.parent.parent != None):
+	# 		pathCost = self.getPath(state.parent, pathCost+1)
+	# 		#print("just called get path with: ", state.parent.boardConfig)
+	# 		#self.getPath(state.parent)
+
+	# 	print(state.action)
+	# 	print(state.boardConfig)
+	# 	return pathCost
+
+	# 	#return pathCost
+
+	# def getPath(self, state, pathCost):
 	def getPath(self, state, pathCost):
+		"""
+		Recursive method to print out path from initial board to end board
+		Base case: if the state's parent is None
+		Note: We don't want to print the init Node's state change (so extra if)
 
-		#pathCost = 0
+		"""
 
-		if(state.parent.parent != None):
-			return self.getPath(state.parent, pathCost+1)
-			
+
+		if(state.parent != None):
+			pathCost = self.getPath(state.parent, pathCost+1)
+		
+		if state.parent == None:
+			#In initial node, no action led to this. So don't print action
+			return pathCost
+
 		print(state.action)
 		print(state.boardConfig)
 		return pathCost
 
-		#return pathCost
+
+
 
 
 	def formatPrint(self, initState):
@@ -160,13 +186,22 @@ class Solver:
 		"""
 		BFS search: uses a FIFO queue with a deque implementation
 		board configurations are represented as strings, as to allow hashing
+		stat_data: 0: path_to_goal, 1: pathCost, 2: nodes_expanded, 3:
 		"""
+
+		#path_to_goal, cost_of_path,
+		#nodes_expanded, fringe_size, max_fringe_size,
+		#search_depth, max_search_depth, running_time, max_ram_usage
+
+		stat_data = DataContainer()
+		initPathCost = 0
+
 
 		frontier = deque()
 		frontier.appendleft(initState)
 		explored = set()
 
-		pathCost = 0
+		#pathCost = 0
 
 		while len(frontier) != 0:
 			state = frontier.pop()
@@ -176,8 +211,14 @@ class Solver:
 			if self.goalTest(state.boardConfig):
 				self.formatPrint(initState)
 				#Recursively find parent path
-				pathCost = self.getPath(state, pathCost)
-				print("Path Cost: ", pathCost)
+				#pathCost = self.getPath(state, pathCost)
+				stat_data.pathCost = self.getPath(
+					state, initPathCost, stat_data.path_to_goal)
+				#self.getPath(state)
+
+				#print("Path Cost: ", pathCost)
+				print("Path Cost: ", stat_data.pathCost)
+
 				print("End of AI search")
 				return
 
@@ -190,6 +231,8 @@ class Solver:
 				if str(child.boardConfig) not in frontier and str(child.boardConfig) not in explored:
 					frontier.appendleft(child) 
 
+
+		stat_data.nodes_expanded = len(explored)
 		print("failed bfs")
 		return
 
@@ -234,13 +277,6 @@ class Solver:
 
 
 
-
-
-
-
-
-
-
 class State:
 	'''
 	boardConfig:   ordered list of tile numbers
@@ -254,6 +290,41 @@ class State:
 		self.boardConfig = boardConfig
 		self.blankIndex = blankIndex
 		self.action = action
+
+
+class DataContainer:
+	"""
+	Object to hold statistical information about the search
+	"""
+
+	# def __init__(self, path_to_goal, cost_of_path,
+	# 	nodes_expanded, fringe_size, max_fringe_size,
+	# 	search_depth, max_search_depth, running_time, max_ram_usage):
+	def __init__(self):
+
+
+		# self.path_to_goal = path_to_goal
+		# self.cost_of_path = cost_of_path
+		# self.nodes_expanded = nodes_expanded
+		# self.fringe_size = fringe_size
+		# self.max_fringe_size = max_fringe_size
+		# self.search_depth = search_depth
+		# self.max_search_depth = max_search_depth
+		# self.running_time = running_time
+		# self.max_ram_usage = max_ram_usage
+
+
+		self.path_to_goal = None
+		self.cost_of_path = None
+		self.nodes_expanded = None
+		self.fringe_size = None
+		self.max_fringe_size = None
+		self.search_depth = None
+		self.max_search_depth = None
+		self.running_time = None
+		self.max_ram_usage = None
+
+
 
 
 
@@ -734,12 +805,12 @@ print("AI is has completed its task.")
 
 
 
-#Write results to a file called output.txt
-outputFile = open('output.txt', 'w')
+# #Write results to a file called output.txt
+# outputFile = open('output.txt', 'w')
 
-#Use .write to write variables out to the file
-#print("The method is: ", method)
-#print("The board is: ", board, ". It is of type: ",type(board))
+# #Use .write to write variables out to the file
+# #print("The method is: ", method)
+# #print("The board is: ", board, ". It is of type: ",type(board))
 
-outputFile.write("hello")
+# outputFile.write("hello")
 
