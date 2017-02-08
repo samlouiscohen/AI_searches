@@ -9,6 +9,8 @@ General tips:
 
 import sys
 import math
+import time
+import resource
 from collections import deque
 
 
@@ -41,7 +43,9 @@ class Solver:
 		# Find the 0 and pass in as blank index to work with
 		initState = State(None, self.board, zeroIndex, None)
 
-		self.bfsSearch(initState)
+
+
+		return self.bfsSearch(initState)
 
 
 
@@ -66,25 +70,25 @@ class Solver:
 
 		#Up check (i is not in top row, then we can swap up)
 		if blankIndex > self.n-1:
-			action = "U"
+			action = 'Up'
 			#pState : parent state
 			upState = self.buildNewState(pState, pState.blankIndex, action)
 			childStates.append(upState)
 		#Down check (i is not in bottom row, then we can swap down)
 		if blankIndex < (len(pState.boardConfig) - self.n):
-			action = "D"
+			action = 'Down'
 			downState = self.buildNewState(pState, pState.blankIndex, action)
 			childStates.append(downState)
 
 		#Left column check (i is not in first column, then we can swap left)
 		if blankIndex % self.n != 0:
-			action = "L"
+			action = 'Left'
 			leftState = self.buildNewState(pState, pState.blankIndex, action)
 			childStates.append(leftState)
 
 		#Right column check
 		if (blankIndex + 1) % self.n !=0:
-			action = "R"
+			action = 'Right'
 			rightState = self.buildNewState(pState, pState.blankIndex, action)
 			childStates.append(rightState)
 
@@ -103,14 +107,14 @@ class Solver:
 		#Determine which way we are swapping based on "action"
 		#Linear(1 Dimensional) representaion of grid movement(2-D)
 
-		if action == "U":
+		if action == 'Up':
 			newBlankIndex = blankIndex - self.n
-		elif action == "D":
+		elif action == 'Down':
 			newBlankIndex = blankIndex + self.n
-		elif action == "L":
+		elif action == 'Left':
 			newBlankIndex = blankIndex - 1
-		else:
-			newBlankIndex = blankIndex + 1 #right
+		else: #right
+			newBlankIndex = blankIndex + 1 
 
 		#Swap blank with adjacent tile
 		newConfig[blankIndex] = newConfig[newBlankIndex]
@@ -147,7 +151,7 @@ class Solver:
 	# 	#return pathCost
 
 	# def getPath(self, state, pathCost):
-	def getPath(self, state, pathCost):
+	def getPath(self, state, pathCost, path_to_goal):
 		"""
 		Recursive method to print out path from initial board to end board
 		Base case: if the state's parent is None
@@ -157,14 +161,18 @@ class Solver:
 
 
 		if(state.parent != None):
-			pathCost = self.getPath(state.parent, pathCost+1)
+			pathCost = self.getPath(state.parent, pathCost+1, path_to_goal)
 		
 		if state.parent == None:
 			#In initial node, no action led to this. So don't print action
 			return pathCost
 
-		print(state.action)
-		print(state.boardConfig)
+		#print(state.action)
+		#formatedStateAction = 
+		#path_to_goal.append("'" + state.action + "'")
+		path_to_goal.append(state.action)
+
+		#print(state.boardConfig)
 		return pathCost
 
 
@@ -172,7 +180,8 @@ class Solver:
 
 
 	def formatPrint(self, initState):
-		print("Reached Goal State Configuration.")
+		# print("Artificially Intelligent Agent. I live to serve.")
+		# print("Master Sam, I have Reached Goal State Configuration.")
 		print() 
 		print()
 		print("Initial State:")
@@ -186,14 +195,14 @@ class Solver:
 		"""
 		BFS search: uses a FIFO queue with a deque implementation
 		board configurations are represented as strings, as to allow hashing
-		stat_data: 0: path_to_goal, 1: pathCost, 2: nodes_expanded, 3:
+		data: 0: path_to_goal, 1: pathCost, 2: nodes_expanded, 3:
 		"""
 
 		#path_to_goal, cost_of_path,
 		#nodes_expanded, fringe_size, max_fringe_size,
 		#search_depth, max_search_depth, running_time, max_ram_usage
 
-		stat_data = DataContainer()
+		data = DataContainer()
 		initPathCost = 0
 
 
@@ -204,24 +213,41 @@ class Solver:
 		#pathCost = 0
 
 		while len(frontier) != 0:
+
+			#Update max fringe size
+			if len(frontier) > data.max_fringe_size:
+				data.max_fringe_size = len(frontier)
+			#Update max search depth
+			#??
+
 			state = frontier.pop()
 
+			#Add the current state to the explored set
 			explored.add(str(state.boardConfig))
 
+			#Test if current state is the goal state
 			if self.goalTest(state.boardConfig):
 				self.formatPrint(initState)
-				#Recursively find parent path
-				#pathCost = self.getPath(state, pathCost)
-				stat_data.pathCost = self.getPath(
-					state, initPathCost, stat_data.path_to_goal)
-				#self.getPath(state)
+				
+				#Recursively find parent path with getPath method
+				data.cost_of_path = self.getPath(
+					state, initPathCost, data.path_to_goal)
+				#Set search_depth to pathCost as cost is number of edges (deep)
+				data.search_depth = data.cost_of_path
 
-				#print("Path Cost: ", pathCost)
-				print("Path Cost: ", stat_data.pathCost)
+				#Only set the current fringe_size when we found the goal state
+				data.fringe_size = len(frontier)
 
-				print("End of AI search")
-				return
 
+				#Store data into stats object
+
+				#To be an expanded node, you first have to be explored. Only 
+				# the goal-state node will have returned before being explored.
+				data.nodes_expanded = len(explored) - 1
+
+				return data
+
+			#If current node is not in goal state, expand it
 			childStates = self.spawnChildrenStates(state)
 
 
@@ -232,43 +258,9 @@ class Solver:
 					frontier.appendleft(child) 
 
 
-		stat_data.nodes_expanded = len(explored)
+		data.nodes_expanded = len(explored)
 		print("failed bfs")
-		return
-
-
-
-	"""DONT MOVE ON UNTIL FIGURE OUT ALL OF BFS LIKE PATH COST!!!"""
-	def dfsSearch(self, initState):
-		"""
-		DFS search: uses a FILO stack with a deque implemtation
-		pop from the left and append left to implement Stack
-		"""
-		frontier = deque()
-		frontier.appendleft(initState)
-		explored = set()
-
-		while len(frontier) != 0:
-			state = frontier.popleft()
-
-			explored.add(str(state.boardConfig))
-
-			if self.goalTest(state.boardConfig):
-				self.formatPrint(initState)
-				#Recursively find parent path
-				self.getPath(state)
-				print("End of AI search")
-				return
-
-			childStates = self.spawnChildrenStates(state)
-
-			for child in childStates:
-				#Use convert int[] to string to handle in sets
-				if str(child.boardConfig) not in frontier and str(child.boardConfig) not in explored:
-					frontier.appendleft(child) 
-
-		print("failed dfs")
-		return
+		return data #???????????????? Do I even account for this?
 
 
 
@@ -297,28 +289,13 @@ class DataContainer:
 	Object to hold statistical information about the search
 	"""
 
-	# def __init__(self, path_to_goal, cost_of_path,
-	# 	nodes_expanded, fringe_size, max_fringe_size,
-	# 	search_depth, max_search_depth, running_time, max_ram_usage):
 	def __init__(self):
 
-
-		# self.path_to_goal = path_to_goal
-		# self.cost_of_path = cost_of_path
-		# self.nodes_expanded = nodes_expanded
-		# self.fringe_size = fringe_size
-		# self.max_fringe_size = max_fringe_size
-		# self.search_depth = search_depth
-		# self.max_search_depth = max_search_depth
-		# self.running_time = running_time
-		# self.max_ram_usage = max_ram_usage
-
-
-		self.path_to_goal = None
+		self.path_to_goal = []
 		self.cost_of_path = None
 		self.nodes_expanded = None
-		self.fringe_size = None
-		self.max_fringe_size = None
+		self.fringe_size = 0
+		self.max_fringe_size = 0
 		self.search_depth = None
 		self.max_search_depth = None
 		self.running_time = None
@@ -362,21 +339,6 @@ class DataContainer:
 
 
 
-# class State:
-# 	'''
-# 	boardConfig:   ordered list of tile numbers
-# 	parent:       State object
-# 	action:       String constrained to "U", "D", "L", "R"
-# 	'''
-# 	#Do I really have to pass in n each time? or calc it each time?
-# 	def __init__(self, lastBoardConfig, lastPathCost, lastBlankIndex, action):
-
-# 		self.parent = parent
-# 		self.boardConfig = lastBoardConfig
-# 		self.n = math.sqrt(len(lastBoardConfig)) #GLOBAL Is this necessary?? Repetative?
-
-# 		self.blankIndex = lastBlankIndex
-# 		self.pathCost = lastPathCost + 1
 
 
 
@@ -389,21 +351,7 @@ class DataContainer:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+"""RUNNING PROGRAM"""
 
 argList = sys.argv
 
@@ -418,14 +366,57 @@ board = []
 for char in boardString:
 	if(char != ','):
 		board.append(int(char))
-print()
-print("***Created Artificial Intelligence***")
-print()
+
+
+start_time = time.time()
+
 ai = Solver(board, "bfs")
-ai.main()
-print("AI is has completed its task.")
+data = ai.main()
+
+data.running_time = "{0:.8f}".format(time.time() - start_time)
+data.max_ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000000
+
+#print("AI is has completed its task in: ", running_time, "seconds")
+#print("AI is has completed its task with RAM use: ", max_resource/1000000, "megabytes")
 
 
+
+
+
+
+
+
+
+#File output
+
+
+print(data.path_to_goal)
+print("Path Cost: ", data.cost_of_path)
+print("nodes expanded: ", data.nodes_expanded)
+print("fringe_size: ", data.fringe_size)
+print("max_fringe_size: ", data.max_fringe_size)
+print("search_depth: ", None)
+print("max_search_depth: ", None)
+print("running_time: ", data.running_time)
+print("max_ram_usage: ", data.max_ram_usage)
+
+
+print("End of AI search")
+#print(data.fringe_size)
+
+
+#Ask how to format properly!!!!
+#Write results to a file called output.txt
+#outputFile = open('output.txt', 'w')
+
+# finalPath = "["
+
+# for aMove in data.path_to_goal:
+# 	finalPath+= "'%s' " % aMove
+# finalPath
+# print(finalPath)
+# #print(data.path_to_goal)
+# print("-------------------------------------------------")
 
 
 
