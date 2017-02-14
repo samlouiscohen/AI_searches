@@ -1,12 +1,3 @@
-'''
-General tips:
-
-- path moves reference the position of the empty space(intuitive)
-- cost of path is number of moves from start state to goal state
-- Possibly write a state, solver, and board class
-
-'''
-
 import sys
 import math
 import time
@@ -15,12 +6,6 @@ from collections import deque
 import queue
 import heapq
 
-
-
-'''START ALGORITHM'''
-
-
-#uniqueID = 0
 
 class Solver:
 	'''
@@ -57,9 +42,6 @@ class Solver:
 			return self.astSearch(initState)
 		else:
 			return self.idaSearch(initState)
-
-
-
 
 
 
@@ -116,9 +98,6 @@ class Solver:
 		#IMPORTANT: the assignment is by reference unless you splice with [:]
 		newConfig = parentState.boardConfig[:]
 
-		#Update the ID for this new node
-
-
 		#Determine which way we are swapping based on "action"
 		#Linear(1 Dimensional) representaion of grid movement(2-D)
 
@@ -148,22 +127,6 @@ class Solver:
 		return True
 
 
-	# def getPath(self, state, pathCost, path_to_goal):
-	# 	"""
-	# 	Recursive method to print out path from initial board to end board
-	# 	Base case: if the state's parent is None
-	# 	Note: We don't want to print the init Node's state change (so extra if)
-
-	# 	"""
-		# if(state.parent != None):
-		# 	pathCost = self.getPath(state.parent, pathCost+1, path_to_goal)
-		# else:
-		# 	#Init node, no action led here. Don't further recurse nor append.
-		# 	return pathCost
-
-
-		# path_to_goal.append(state.action)
-		# return pathCost
 	def getPath(self, state, path_to_goal):
 		"""
 		method to print out path from initial board to end board
@@ -177,7 +140,7 @@ class Solver:
 
 			path_to_goal.appendleft(state.action)
 			pathCost += 1
-			#print(state.parent.boardConfig)
+
 			state = state.parent
 
 		return pathCost
@@ -232,9 +195,9 @@ class Solver:
 
 			#Test if current state is the goal state
 			if self.goalTest(state.boardConfig):
-				self.formatPrint(initState)
+				#self.formatPrint(initState)
 				
-
+				#Set the path cost & populate the path itself
 				data.cost_of_path = self.getPath(
 					state, data.path_to_goal)
 
@@ -272,7 +235,7 @@ class Solver:
 
 
 		data.nodes_expanded = len(explored)
-		print("failed bfs")
+		#print("failed bfs")
 		return data #???????????????? Do I even account for this?
 
 
@@ -311,10 +274,9 @@ class Solver:
 
 			#Test if current state is the goal state
 			if self.goalTest(state.boardConfig):
-				self.formatPrint(initState)
+				#self.formatPrint(initState)
 				
-				#Recursively find parent path with getPath method
-				#data.cost_of_path = self.getPath(state, initPathCost, data.path_to_goal)
+				#Set the path cost & populate the path itself
 				data.cost_of_path = self.getPath(state, data.path_to_goal)
 
 				#Account a edge case of max search depth
@@ -333,9 +295,7 @@ class Solver:
 
 				return data
 
-			print("stateDepth:" + str(state.depth) + " | maxdepth: " + str(data.max_search_depth))
-
-
+			#print("stateDepth:" + str(state.depth) + " | maxdepth: " + str(data.max_search_depth))
 
 			#If current node is not in goal state, expand it
 			childStates = self.spawnChildrenStates(state)
@@ -355,7 +315,7 @@ class Solver:
 
 
 		data.nodes_expanded = len(explored)
-		print("failed dfs")
+		#print("failed dfs")
 		return data
 
 
@@ -404,6 +364,7 @@ class Solver:
 			#Check if this popped state is the goal state
 			if self.goalTest(nodeTuple[2].boardConfig):
 				
+				#Set the path cost & populate the path itself
 				data.cost_of_path = self.getPath(nodeTuple[2], data.path_to_goal)
 
 				#Set search_depth to pathCost as cost is number of edges (deep)
@@ -422,10 +383,8 @@ class Solver:
 			if nodeTuple[2].depth + 1 > data.max_search_depth:
 				data.max_search_depth  = nodeTuple[2].depth + 1
 
-
 			#Create the children or "neighbors" of the current node
 			childStates = self.spawnChildrenStates(nodeTuple[2])
-
 
 			#Create a tuple for each child to insert into the pQueue
 			for child in childStates:
@@ -487,19 +446,13 @@ class Solver:
 				else: #The first two were equal and so we look to first in, and so the old will always win (dont do anything)
 					break
 
-		#heapq.heapify(frontier)
-
-
 
 	def idaSearch(self, initState):
 		
 		data = DataContainer()
-		print("start program")
 
 		#A limit to stop the search tree from continuing past a certain *cost*
 		costLimit = self.totalCostFunction(initState)
-		print("\n\n\n\n\n\n\n\n\n\n")
-		print("costLimit = ", costLimit)
 
 		#Initially set this to inifinity so we're garunteed to get smaller value
 		cheapestNodeCostOverLimit = math.inf
@@ -513,16 +466,12 @@ class Solver:
 
 		while len(frontier) != 0:
 
-		#	print("Cost limit: " + str(costLimit))
 
 			#Update max fringe size
 			if len(frontier) > data.max_fringe_size:
 				data.max_fringe_size = len(frontier)
 
 			stateNode = frontier.popleft()
-
-			#print(stateNode.boardConfig)
-			#print(len(frontier))
 
 			#Check if the current stateNode is the GoalState
 			if self.goalTest(stateNode.boardConfig):
@@ -544,7 +493,10 @@ class Solver:
 				#data.nodes_expanded = len(explored) - 1
 
 				return data
+
+
 			data.nodes_expanded += 1
+
 			#Update the max search depth
 			if stateNode.depth + 1 > data.max_search_depth:
 				data.max_search_depth  = stateNode.depth + 1
@@ -582,7 +534,7 @@ class Solver:
 
 			#If frontier is now empty & still no goalState, reset tree search w/ a greater limit
 			if len(frontier) == 0:
-				print("reset")
+				#print("reset")
 				frontier = deque()
 
 				#Start over by putting the root back in the stack
@@ -591,7 +543,7 @@ class Solver:
 				#Set new limit: 
 				# shallowest we can go and still know we will reach new state(s) 
 				costLimit = cheapestNodeCostOverLimit
-				print("costLimit = ", costLimit)
+				#print("costLimit = ", costLimit)
 
 				#Reset the cheapest"over"cost so all nodes can update it ??????????????????
 				cheapestNodeCostOverLimit = math.inf
@@ -786,269 +738,6 @@ outputFile.write("running_time: " + str(data.running_time) + "\n")
 outputFile.write("max_ram_usage: " + str(data.max_ram_usage))
 
 outputFile.close()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# def idaSearch(self, initState):
-# 		"""
-# 		IDA* search. This takes advantage of iterative deepening to reduce
-# 		 space complexity and consequently time complexity.
-# 		 Note: IDA* uses f-cost rather than depth as the cutoff value 
-# 		"""
-
-# 		data = DataContainer()
-
-# 		minimum = math.inf
-# 		#Set initial cost limit to the cost of the ..........
-# 		cost_limit = self.totalCostFunction(initState)
-
-# 		frontier = deque()
-
-# 		#Run dfs until find solution
-# 		while(1):
-
-# 			#Frontier as a stack with deque implementation (append left, pop left)
-			
-# 			frontier_set = set()
-
-# 			frontier.appendleft(initState)
-# 			#frontier_set.add(str(initState.boardConfig))
-
-# 			#explored = set()
-
-
-# 			#Update the max "depth" or cost the dfs should reach
-# 			cost_limit +=1
-
-# 			print(cost_limit)
-
-
-# 			#Run dfs
-# 			while len(frontier) != 0:
-
-# 				#Update max fringe size
-# 				if len(frontier) > data.max_fringe_size:
-# 					data.max_fringe_size = len(frontier)
-
-# 				state = frontier.popleft()
-# 				#frontier_set.remove(str(state.boardConfig))
-
-# 				#Add the current state to the explored set
-# 				#explored.add(str(state.boardConfig))
-
-# 				#Test if current state is the goal state
-# 				if self.goalTest(state.boardConfig):
-				
-# 					data.cost_of_path = self.getPath(state, data.path_to_goal)
-
-# 					#Account for an edge case of max search depth
-# 					if data.cost_of_path == 1:
-# 						data.max_search_depth = 1
-					
-# 					#Set search_depth to pathCost as cost is number of edges (deep)
-# 					data.search_depth = data.cost_of_path
-
-# 					#Only set the current fringe_size when we found the goal state
-# 					data.fringe_size = len(frontier)
-
-# 					#To be an expanded node, you first have to be explored. Only 
-# 					# the goal-state node will have returned before being explored.
-# 					data.nodes_expanded = len(explored) - 1
-
-# 					return data
-
-
-# 				#If current node is not in goal state, expand it
-# 				childStates = self.spawnChildrenStates(state)
-
-
-# 				if state.depth + 1 > data.max_search_depth:
-# 					data.max_search_depth  = state.depth + 1
-
-				
-
-
-
-# 				#Keep track of the min element in the stack and that
-# 				# min of the thing that didnt work is the new limit
-# 				#The minimum of the heuristics that were not expected and that is the new limit
-				
-
-# 					explored = set()
-# 					parentNode = child.parent
-# 					while parentNode != None:
-# 						explored.add(str(parentNode.boardConfig))
-# 						parentNode = parentNode.parent
-				
-# 				for child in reversed(childStates):
-					
-
-
-# 					child.cost = self.totalCostFunction(child)
-
-# 					if str(child.boardConfig) not in explored:# and str(child.boardConfig) not in frontier_set:
-# 						if child.cost <= cost_limit:
-# 							frontier.appendleft(child)
-# 							#frontier_set.add(str(child.boardConfig))
-
-# 			#else:
-# 			#newcost = min(cost_limit, child.cost)
-# 			#cost_limit = newcost
-
-
-
-
-
-	# def idaSearch(self, initState):
-	# 	"""
-	# 	IDA* search. This takes advantage of iterative deepening to reduce
-	# 	 space complexity and consequently time complexity.
-	# 	 Note: IDA* uses f-cost rather than depth as the cutoff value 
-	# 	"""
-
-	# 	data = DataContainer()
-
-	# 	cost_limit = self.totalCostFunction(initState)
-
-	# 	frontier = deque()
-
-	# 	#Run dfs until find solution
-	# 	while(1):
-
-	# 		#Frontier as a stack with deque implementation (append left, pop left)
-			
-	# 		frontier_set = set()
-
-	# 		frontier.appendleft(initState)
-	# 		#frontier_set.add(str(initState.boardConfig))
-
-	# 		#explored = set()
-
-
-	# 		#Update the max "depth" or cost the dfs should reach
-	# 		cost_limit +=1
-
-	# 		print(cost_limit)
-
-
-	# 		#Run dfs
-	# 		while len(frontier) != 0:
-
-	# 			#Update max fringe size
-	# 			if len(frontier) > data.max_fringe_size:
-	# 				data.max_fringe_size = len(frontier)
-
-	# 			state = frontier.popleft()
-	# 			#frontier_set.remove(str(state.boardConfig))
-
-	# 			#Add the current state to the explored set
-	# 			#explored.add(str(state.boardConfig))
-
-	# 			#Test if current state is the goal state
-	# 			if self.goalTest(state.boardConfig):
-				
-	# 				data.cost_of_path = self.getPath(state, data.path_to_goal)
-
-	# 				#Account for an edge case of max search depth
-	# 				if data.cost_of_path == 1:
-	# 					data.max_search_depth = 1
-					
-	# 				#Set search_depth to pathCost as cost is number of edges (deep)
-	# 				data.search_depth = data.cost_of_path
-
-	# 				#Only set the current fringe_size when we found the goal state
-	# 				data.fringe_size = len(frontier)
-
-	# 				#To be an expanded node, you first have to be explored. Only 
-	# 				# the goal-state node will have returned before being explored.
-	# 				data.nodes_expanded = len(explored) - 1
-
-	# 				return data
-
-
-	# 			#If current node is not in goal state, expand it
-	# 			childStates = self.spawnChildrenStates(state)
-
-
-	# 			if state.depth + 1 > data.max_search_depth:
-	# 				data.max_search_depth  = state.depth + 1
-
-				
-
-
-
-	# 			#Keep track of the min element in the stack and that
-	# 			# min of the thing that didnt work is the new limit
-	# 			#The minimum of the heuristics that were not expected and that is the new limit
-				
-
-	# 				explored = set()
-	# 				parentNode = child.parent
-	# 				while parentNode != None:
-	# 					explored.add(str(parentNode.boardConfig))
-	# 					parentNode = parentNode.parent
-
-	# 			for child in reversed(childStates):
-					
-
-
-	# 				child.cost = self.totalCostFunction(child)
-
-	# 				if str(child.boardConfig) not in explored:# and str(child.boardConfig) not in frontier_set:
-	# 					if child.cost <= cost_limit:
-	# 						frontier.appendleft(child)
-	# 						#frontier_set.add(str(child.boardConfig))
-
-	# 		#else:
-	# 		#newcost = min(cost_limit, child.cost)
-	# 		#cost_limit = newcost
-
-
-
-
-
-
-
-
-
-					# elif str(child.boardConfig) in frontier_set:
-					# 	if child.cost < cost_limit:
-
-					# 		for node in frontier:
-					# 			if str(node.boardConfig) == str(child.boardConfig):
-
-					# 				if child.cost < node.cost:
-					# 					node = child
-
-
-
 
 
 
