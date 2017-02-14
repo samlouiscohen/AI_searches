@@ -30,6 +30,8 @@ class Solver:
 		# Pass in None for parent & previous action of the root
 		# Find the 0 and pass in as blank index to work with
 		initState = State(None, self.board, zeroIndex, None)
+
+		#print(self.board)
 		#initState.depth = 0 #Test this for finding max depth
 
 
@@ -40,8 +42,9 @@ class Solver:
 			return self.dfsSearch(initState)
 		elif method == "ast":
 			return self.astSearch(initState)
-		else:
+		elif method == "ida":
 			return self.idaSearch(initState)
+
 
 
 
@@ -60,6 +63,7 @@ class Solver:
 			Is there a more efficient way of achieving this?
 		"""
 		childStates = []
+		#print("parent board: ", pState.boardConfig)
 
 		blankIndex = pState.blankIndex
 
@@ -109,6 +113,11 @@ class Solver:
 			newBlankIndex = blankIndex - 1
 		else: #right
 			newBlankIndex = blankIndex + 1 
+
+
+		#print("len config: ", len(newConfig))
+		#print("board: ", newConfig)
+		#print("blank index: ", newBlankIndex)
 
 		#Swap blank with adjacent tile
 		newConfig[blankIndex] = newConfig[newBlankIndex]
@@ -183,11 +192,15 @@ class Solver:
 
 		while len(frontier) != 0:
 
+
 			#Update max fringe size
 			if len(frontier) > data.max_fringe_size:
 				data.max_fringe_size = len(frontier)
 
 			state = frontier.pop()
+
+			#print("board: ", state.boardConfig)
+
 			frontier_set.remove(str(state.boardConfig))
 
 			#Add the current state to the explored set
@@ -225,6 +238,7 @@ class Solver:
 			if state.depth + 1 > data.max_search_depth:
 				data.max_search_depth  = state.depth + 1
 
+			print("hello")
 			for child in childStates:
 
 				#Use convert int[] to string to handle in sets
@@ -695,13 +709,18 @@ boardString = argList[2]
 board = []
 
 #Store the board into a int array
-for char in boardString:
-	if(char != ','):
-		board.append(int(char))
+# for char in boardString:
+# 	if(char != ','):
+# 		board.append(int(char))
+
+listOfStrnums = boardString.split(',')
+for strnum in listOfStrnums:
+	board.append(int(strnum))
 
 
 start_time = time.time()
 
+#print("The starting board: ", board)
 
 ai = Solver(board, method)
 data = ai.main()
