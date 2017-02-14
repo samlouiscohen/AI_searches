@@ -707,21 +707,20 @@ ai = Solver(board, method)
 data = ai.main()
 
 data.running_time = "{0:.8f}".format(time.time() - start_time)
-data.max_ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000000
+data.max_ram_usage = "{0:.8f}".format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000000)
 
 
 
 #Output to terminal
-print("path_to_goal: ", list(data.path_to_goal))
-print("cost_of_path: ", data.cost_of_path)
-print("nodes expanded: ", data.nodes_expanded)
-print("fringe_size: ", data.fringe_size)
-print("max_fringe_size: ", data.max_fringe_size)
-print("search_depth: ", data.search_depth)
-print("max_search_depth: ", data.max_search_depth)
-print("running_time: ", data.running_time)
-print("max_ram_usage: ", data.max_ram_usage)
-print("End of AI search. \n")
+#print("path_to_goal: ", list(data.path_to_goal))
+# print("cost_of_path: ", data.cost_of_path)
+# print("nodes expanded: ", data.nodes_expanded)
+# print("fringe_size: ", data.fringe_size)
+# print("max_fringe_size: ", data.max_fringe_size)
+# print("search_depth: ", data.search_depth)
+# print("max_search_depth: ", data.max_search_depth)
+# print("running_time: ", data.running_time)
+# print("max_ram_usage: ", data.max_ram_usage)
 
 
 #Output to file
