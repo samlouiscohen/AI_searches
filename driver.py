@@ -55,8 +55,8 @@ class Solver:
 			return self.dfsSearch(initState)
 		elif method == "ast":
 			return self.astSearch(initState)
-		#else:
-		#	return self.idaSearch(initState)
+		else:
+			return self.idaSearch(initState)
 
 
 
@@ -118,8 +118,6 @@ class Solver:
 
 		#Update the ID for this new node
 
-		global uniqueID
-		uniqueID +=1
 
 		#Determine which way we are swapping based on "action"
 		#Linear(1 Dimensional) representaion of grid movement(2-D)
@@ -236,12 +234,13 @@ class Solver:
 			if self.goalTest(state.boardConfig):
 				self.formatPrint(initState)
 				
-				#Recursively find parent path with getPath method
-				# data.cost_of_path = self.getPath(
-				# 	state, initPathCost, data.path_to_goal)
 
 				data.cost_of_path = self.getPath(
 					state, data.path_to_goal)
+
+				#Account a edge case of max search depth
+				if data.cost_of_path == 1:
+					data.max_search_depth = 1
 
 
 				#Set search_depth to pathCost as cost is number of edges (deep)
@@ -287,14 +286,15 @@ class Solver:
 		data = DataContainer()
 		#initPathCost = 0
 
-
+		#Stack with deque implementation (append left, pop left)
 		frontier = deque()
-		frontier.appendleft(initState) #appends to the right side
+		frontier_set = set()
 
+		frontier.appendleft(initState)
+		frontier_set.add(str(initState.boardConfig))
 
 		explored = set()
-		frontier_set = set()
-		frontier_set.add(str(initState.boardConfig))
+
 
 		while len(frontier) != 0:
 
@@ -303,7 +303,7 @@ class Solver:
 				data.max_fringe_size = len(frontier)
 
 
-			state = frontier.popleft() #pops from the right side
+			state = frontier.popleft()
 			frontier_set.remove(str(state.boardConfig))
 
 			#Add the current state to the explored set
@@ -317,6 +317,9 @@ class Solver:
 				#data.cost_of_path = self.getPath(state, initPathCost, data.path_to_goal)
 				data.cost_of_path = self.getPath(state, data.path_to_goal)
 
+				#Account a edge case of max search depth
+				if data.cost_of_path == 1:
+					data.max_search_depth = 1
 				
 				#Set search_depth to pathCost as cost is number of edges (deep)
 				data.search_depth = data.cost_of_path
@@ -330,15 +333,15 @@ class Solver:
 
 				return data
 
+			print("stateDepth:" + str(state.depth) + " | maxdepth: " + str(data.max_search_depth))
 
-			#if state.depth + 1 > data.max_search_depth:
-			#	data.max_search_depth  = state.depth + 1
 
-			if state.depth > data.max_search_depth:
-				data.max_search_depth  = state.depth
 
 			#If current node is not in goal state, expand it
 			childStates = self.spawnChildrenStates(state)
+
+			if state.depth > data.max_search_depth:
+				data.max_search_depth  = state.depth
 
 			#Reverse childstates-- push backwards order, and pop correct order
 			for child in reversed(childStates):
@@ -357,21 +360,30 @@ class Solver:
 
 
 
-	"""--------------------------"""
+
 
 	def astSearch(self, initState):
 		"""
-		use 2-tuples: (cost, UDLR, node). The direction is in the node.
-		"""
+		A-Star Search implemented using a priority queue
+		Heuristic f(n) = g(n) + h(n): Manhattan priority function- 
+			the sum of the distances of the tiles from their goal positions
+		Note: Don't count the blank space in this summation
 
+		g(n): cost to reach node n
+		h(n): cost to get from n to the goal
+
+		The priorityQueue stores 3-tuples: (cost, UDLR, node)
+		The priorityQueue is implemented w/ a list but is formatted w/ "heapq"
+		"""
 
 		data = DataContainer()
 
+		#Initialize the frontier as a heap
 		frontier = []
 		heapq.heappush(frontier, (0, 0, initState))
 
+		#Initialize the explored & frontier sets: O(1) access & hold strings
 		explored = set()
-
 		frontier_set = set()
 		frontier_set.add(str(initState.boardConfig))
 
@@ -387,7 +399,6 @@ class Solver:
 			nodeTuple = heapq.heappop(frontier)
 			frontier_set.remove(str(nodeTuple[2].boardConfig))
 			explored.add(str(nodeTuple[2].boardConfig))
-
 
 
 			#Check if this popped state is the goal state
@@ -411,8 +422,12 @@ class Solver:
 			if nodeTuple[2].depth + 1 > data.max_search_depth:
 				data.max_search_depth  = nodeTuple[2].depth + 1
 
+
+			#Create the children or "neighbors" of the current node
 			childStates = self.spawnChildrenStates(nodeTuple[2])
 
+
+			#Create a tuple for each child to insert into the pQueue
 			for child in childStates:
 
 				childNodeTuple = None
@@ -434,18 +449,17 @@ class Solver:
 					childNodeTuple = (child.cost, 4, child)
 
 
+				#If board is not in explored nor frontier, just add to frontier
 				if str(child.boardConfig) not in explored and str(child.boardConfig) not in frontier_set:
 						
 					heapq.heappush(frontier, childNodeTuple)
-
 					frontier_set.add(str(child.boardConfig))
 
+				#If a duplicate boardConfig is in frontier, determine which of
+				# the two is cheaper and keep that one
 				elif str(child.boardConfig) in frontier_set:
-					#print("hello")
-					#pass
+
 					self.decreaseKey(frontier, childNodeTuple)
-
-
 
 
 
@@ -459,13 +473,11 @@ class Solver:
 			#Find the node that contains the board that we now have a duplicate of
 			if oldTupleNode[2].boardConfig == childTuple[2].boardConfig:
 
-				#Compare the costs
+				#Compare the costs first by heuristic, then action, then age
 				if childTuple[0] < oldTupleNode[0]:
 					#oldTupleNode = childTuple
 					del frontier[frontier.index(oldTupleNode)]
 					heapq.heappush(frontier, childTuple)
-
-
 
 				elif childTuple[1] < oldTupleNode[1]:
 					#oldTupleNode = childTuple
@@ -478,231 +490,126 @@ class Solver:
 		#heapq.heapify(frontier)
 
 
-	"""--------------------------"""
 
-
-	#def ida
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	# def astSearch(self, initState):
-	# 	"""
-	# 	A-Star Search implemented using a priority queue.
-	# 	Heuristic: Manhattan priority function- 
-	# 		the sum of the distances of the tiles from their goal positions.
-	# 	Note: Don't count the blank space in this summation
-
-	# 	g(n): cost to reach node n
-	# 	h(n): cost to get from n to the goal
-	# 	f(n) = g(n) + h(n)
-
-	# 	ALGORITHM:
-	# 	1. Use a tuple: (distance, udlr, uniqueID) within the priorityQueue
-	# 		-The priority queue orders by the 1st value, then proceeds if same
-	# 	2. UDLR: 0,1,2,3
-
-	# 	"""
-	# 	#Container object to send out all data after A-Star ends
-	# 	data = DataContainer()
-
-	# 	#Unique ID to determine the order in case dupliacte node was entered
-	# 	#uniqueID = 0
-
-	# 	#Use a priority queue for the frontier list. This takes tuples
-	# 	frontier = [] #queue.PriorityQueue()
-
-	# 	#Dictionary to map a UniqueID from the frontier tuple to an actual node
-	# 	boardDictionary = dict()
-
-
-	# 	#Note: dictIDtoNode maps-- int : Node
-	# 	dictIDtoNode = dict()
-	# 	#Note: dictBoardToID maps-- String : int
-	# 	dictBoardToID = dict()
-
-	# 	#Initialize the Priority Queue (frontier) with the root state
-	# 	heapq.heappush(frontier, (0, None, uniqueID))
-
-	# 	#boardDictionary[uniqueID] = initState
-
-	# 	dictIDtoNode[uniqueID] = initState
-	# 	dictBoardToID[str(initState.boardConfig)] = uniqueID
-
-
-
-	# 	explored = set()
-	# 	frontier_set = set()
-
-
-	# 	while len(frontier) != 0:
-
-	# 		# for k, v in dictIDtoNode.items():
-	# 		# 	print(k, v.boardConfig)
-	# 		# 	print("")
-
-	# 		stateCosts = heapq.heappop(frontier)
-	# 		#frontier_set.remove(stateCosts[2])
-	# 		#state = boardDictionary[stateCosts[2]]
-	# 		state = dictIDtoNode[stateCosts[2]]
-
-	# 		#Add the current state to the explored set
-	# 		explored.add(str(state.boardConfig))
-
-
-	# 		#Goal test
-	# 		if self.goalTest(state.boardConfig):
-	# 			data.cost_of_path = self.getPath(state, data.path_to_goal)
-	# 			return data
-
-	# 		#If current node is not in goal state, expand it
-	# 		childStates = self.spawnChildrenStates(state)
-
-	# 		#Use this to assign correct ID's to each child in the cluster
-	# 		idAdjust = len(childStates) - 1
-			
-
-
-
-	# 		for child in childStates:
-
-	# 			#Assign the proper uniqueID to each child after blindly incrementing
-	# 			actualID = uniqueID - idAdjust
-	# 			#boardDictionary[actualID] = child
-	# 			dictIDtoNode[actualID] = child
-	# 			#dictBoardToID[child.boardConfig] = uniqueID #This will add a duplicate right???????
-
-	# 			idAdjust -= 1
-	# 			costTuple = None
-
-	# 			if child.action == 'Up':
-	# 				costTuple = (self.totalCostFunction(child), 1, actualID)
-					
-	# 			elif child.action == 'Down':
-	# 				costTuple = (self.totalCostFunction(child), 2, actualID)
-					
-	# 			elif child.action == 'Left':
-	# 				costTuple = (self.totalCostFunction(child), 3, actualID)
-					
-	# 			else:
-	# 				costTuple = (self.totalCostFunction(child), 4, actualID)
-
-
-
-
-	# 			if str(child.boardConfig) not in explored and str(child.boardConfig) not in frontier_set:
-					
-	# 				heapq.heappush(frontier, costTuple)
-
-	# 				frontier_set.add(str(child.boardConfig))
-	# 				dictBoardToID[str(child.boardConfig)] = uniqueID
-
-	# 			elif str(child.boardConfig) in frontier_set:
-
-	# 				self.decreaseKey(frontier, dictIDtoNode, dictBoardToID, costTuple, child)
-
-
-	# 	data.nodes_expanded = len(explored)
-	# 	print("failed ast")
-	# 	return data
-
-
-
-
-	# def decreaseKey(self, frontier, dictIDtoNode, dictBoardToID, newCost, newNode):
-	# 	"""
-	# 	Since we're in decreaseKey method, it means that the boardConfig 
-	# 	was already in the frontier. So now we have to see if the new pathCost
-	# 	to the same config is cheaper. If so replace the old one.
-
-	# 	**Does it make sense to store the f-function cost in the nodes???
-
-	# 	Algorithm:
-	# 	1. We know the boardConfig, and the new one is not added to the frontier yet.
-	# 	2. 
-
-
-	# 	Whats the benifit of a dictionary with uniqueID: object rather than
-
-	# 	"""
-
-	# 	for k, v in dictIDtoNode.items():
-	# 		print(k, v)
+	def idaSearch(self, initState):
 		
-	# 	uniqueID = newCost[2]
+		data = DataContainer()
+		print("start program")
 
-	# 	oldID = dictBoardToID[str(newNode.boardConfig)]
+		#A limit to stop the search tree from continuing past a certain *cost*
+		costLimit = self.totalCostFunction(initState)
+		print("\n\n\n\n\n\n\n\n\n\n")
+		print("costLimit = ", costLimit)
 
-	# 	oldNode = dictIDtoNode[oldID]
+		#Initially set this to inifinity so we're garunteed to get smaller value
+		cheapestNodeCostOverLimit = math.inf
 
+		#Frontier as a stack, implemented with a dequeue (push/pop on left)
+		frontier = deque()
 
-	# 	#Search the heap for the cost associated with the oldID
-
-	# 	for costTuple in frontier:
-
-	# 		#Search for the oldID corresponding to the duplicate boardConfig
-	# 		if costTuple[2] == oldID:
-
-	# 			#Check to see which of the paths is cheaper
-
-	# 			#If the new cost is cheaper, than replace the old path
-	# 			if newCost[0] < costTuple[0]:
-
-	# 				#Update both dictionaries, the frontier, NOT the sets
-	# 				costTuple = newCost #??????PROPER UPDATE-- set the new tuple like this??????
-
-	# 				#Delete the old ID key and add the new ID-state pair
-	# 				dictIDtoNode[uniqueID] = dictIDtoNode.pop(oldID)
-	# 				#dictIDtoNode[uniqueID] = dictIDtoNode[oldID]
-	# 				#dictIDtoNode.pop(oldID)
+		#Initialize the frontier with the "root" of the search tree
+		frontier.appendleft(initState)
 
 
+		while len(frontier) != 0:
+
+		#	print("Cost limit: " + str(costLimit))
+
+			#Update max fringe size
+			if len(frontier) > data.max_fringe_size:
+				data.max_fringe_size = len(frontier)
+
+			stateNode = frontier.popleft()
+
+			#print(stateNode.boardConfig)
+			#print(len(frontier))
+
+			#Check if the current stateNode is the GoalState
+			if self.goalTest(stateNode.boardConfig):
+
+				data.cost_of_path = self.getPath(stateNode, data.path_to_goal)
+
+				#Account for an edge case of max search depth
+				if data.cost_of_path == 1:
+					data.max_search_depth = 1
+				
+				#Set search_depth to pathCost as cost is number of edges (deep)
+				data.search_depth = data.cost_of_path
+
+				#Only set the current fringe_size when we found the goal state
+				data.fringe_size = len(frontier)
+
+				#To be an expanded node, you first have to be explored. Only 
+				# the goal-state node will have returned before being explored.
+				#data.nodes_expanded = len(explored) - 1
+
+				return data
+			data.nodes_expanded += 1
+			#Update the max search depth
+			if stateNode.depth + 1 > data.max_search_depth:
+				data.max_search_depth  = stateNode.depth + 1
 
 
-	# 				dictBoardToID[str(newNode.boardConfig)] = uniqueID
+			#If current node is not in goal state, expand it
+			childStates = self.spawnChildrenStates(stateNode)
+
+			#Create a set of parent nodes for the current node to check against
+			#This "explored" set prevents us from going down a branch that
+			# contains a "loop" or is inefficient by doing work only to get 
+			# back to a previous configuration
+			#**So we dont care about multiple of a state in the frontier???????????????
+			explored = set()
+			
+			parent = stateNode
+			while parent != None:
+				explored.add(str(parent.boardConfig))
+				parent = parent.parent
 
 
-	# 			elif newCost[1] < costTuple[1]:
-	# 				#print("\n------------- found old ID----------\n")
-	# 				# for aTuple in frontier:
-	# 				# 	if(aTuple[2] == uniqueID):
-	# 				# 		print("\n------------- found old ID----------\n")
+			#Append any of the currentNode's children that lead to a new state
+			for child in reversed(childStates):
+
+				if str(child.boardConfig) not in explored:
+					child.cost = self.totalCostFunction(child)
+					#print("childCost = ", child.cost)
+
+					if child.cost <= costLimit:
+						frontier.appendleft(child)
+					#	print("child added -->", child.boardConfig)
+					#ChildCost > limit, see if its over by the smallest # yet
+					elif child.cost < cheapestNodeCostOverLimit:
+						cheapestNodeCostOverLimit = child.cost
+
+			#If frontier is now empty & still no goalState, reset tree search w/ a greater limit
+			if len(frontier) == 0:
+				print("reset")
+				frontier = deque()
+
+				#Start over by putting the root back in the stack
+				frontier.appendleft(initState)
+
+				#Set new limit: 
+				# shallowest we can go and still know we will reach new state(s) 
+				costLimit = cheapestNodeCostOverLimit
+				print("costLimit = ", costLimit)
+
+				#Reset the cheapest"over"cost so all nodes can update it ??????????????????
+				cheapestNodeCostOverLimit = math.inf
 
 
-	# 				costTuple = newCost
-	# 				dictIDtoNode[uniqueID] = dictIDtoNode.pop(oldID)
-	# 				#dictIDtoNode[uniqueID] = dictIDtoNode[oldID]
-
-	# 				dictBoardToID[str(newNode.boardConfig)] = uniqueID
-
-	# 			else: #Tie goes to the older node then so just break and dont do anything-- dont add the new node at all.
-	# 				break
 
 
 
-	# 			heapq.heapify(frontier)
 
 
 
+
+
+
+
+
+
+				
 
 
 
@@ -725,6 +632,7 @@ class Solver:
 		Method to calculate the f(n) total cost of the current node.
 		returns g(n) + h(n)
 		"""
+
 		return node.depth + self.calcManhattanDist(node.boardConfig)
 
 	def calcManhattanDist(self, boardConfig):
@@ -736,15 +644,20 @@ class Solver:
 		**Dnt calc for 0
 		"""
 		distanceSum = 0
-		for i in range(1, len(boardConfig)): #Dont include the 0 tile
+
+		for i in range(0, len(boardConfig)):
 
 			tileNum = boardConfig[i]
 
-			iRowCol = self.calcRowCol(i, self.n)
+			#Dont include the 0 tile
+			if tileNum == 0:
+				continue
 
+			iRowCol = self.calcRowCol(i, self.n)
 			tRowCol = self.calcRowCol(tileNum, self.n)
 
 			distanceSum += abs(tRowCol[0]-iRowCol[0]) + abs(tRowCol[1]-iRowCol[1])
+
 
 		return distanceSum
 
@@ -761,9 +674,14 @@ class Solver:
 			rowMultiplier +=1
 
 		#Find the column of a number
-		col = num % n
+		col = (num) % (n)
 
 		return row,col
+
+
+
+
+
 
 
 
@@ -788,56 +706,6 @@ class State:
 	def __lt__(self, other):
 		return self.cost < other.cost
 
-# class HeapState:
-# 	'''
-# 	boardConfig:   ordered list of tile numbers
-# 	parent:       State object
-# 	action:       String constrained to "U", "D", "L", "R"
-# 	'''
-
-# 	def __init__(self, parent, boardConfig, blankIndex, action):
-
-# 		self.parent = parent
-# 		self.boardConfig = boardConfig
-# 		self.blankIndex = blankIndex
-# 		self.action = action
-# 		self.depth = parent.depth + 1 if parent else 0
-
-# 	def __lt__(self, other):
-
-# 		return self.cost < other.cost
-
-# class heapState:
-# 	def __init__(self, parent, boardConfig, blankIndex, action):
-# 		self.parent = parent
-# 		self.boardConfig = boardConfig
-# 		self.blankIndex = blankIndex
-# 		self.action = action
-# 		self.depth = parent.depth + 1 if parent else 0
-
-# 		self.ID
-# 		self.cost = None
-
-# 	def __lt__(self, other):
-
-# 		if self.cost == other.cost:
-# 			if direction == other direction:
-# 				return other
-
-# 			else:
-
-
-
-# 		self.cost == other.cost:
-
-# 			return compareDirections
-
-		
-
-
-
-
-
 
 
 
@@ -850,61 +718,14 @@ class DataContainer:
 	def __init__(self):
 
 		self.path_to_goal = deque()
-		self.cost_of_path = None
-		self.nodes_expanded = None
+		self.cost_of_path = 0
+		self.nodes_expanded = 0
 		self.fringe_size = 0
 		self.max_fringe_size = 0
 		self.search_depth = 0
 		self.max_search_depth = 0
-		self.running_time = None
-		self.max_ram_usage = None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+		self.running_time = 0
+		self.max_ram_usage = 0
 
 
 
@@ -912,12 +733,6 @@ class DataContainer:
 """RUNNING PROGRAM"""
 
 argList = sys.argv
-
-
-
-#Unique ID to determine the order in case dupliacte node was entered
-global uniqueID
-uniqueID = 0
 
 
 #Cause program name is argList[0]?
@@ -935,23 +750,12 @@ for char in boardString:
 
 start_time = time.time()
 
-#calcRowCol(4,3)
-#i = 0
-#tileNum = 4
-#iRowCol = calcRowCol(i, 3)
-#tRowCol = calcRowCol(tileNum, 3)
-#distanceSum = abs(tRowCol[0]-iRowCol[0]) + abs(tRowCol[1]-iRowCol[1])
-#print("DISTANCE::::" + str(distanceSum))
-
 
 ai = Solver(board, method)
 data = ai.main()
 
 data.running_time = "{0:.8f}".format(time.time() - start_time)
 data.max_ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000000
-
-
-
 
 
 
@@ -990,7 +794,6 @@ outputFile.close()
 
 
 
-'''END ALGORITHM'''
 
 
 
@@ -1013,107 +816,219 @@ outputFile.close()
 
 
 
+# def idaSearch(self, initState):
+# 		"""
+# 		IDA* search. This takes advantage of iterative deepening to reduce
+# 		 space complexity and consequently time complexity.
+# 		 Note: IDA* uses f-cost rather than depth as the cutoff value 
+# 		"""
 
+# 		data = DataContainer()
 
+# 		minimum = math.inf
+# 		#Set initial cost limit to the cost of the ..........
+# 		cost_limit = self.totalCostFunction(initState)
 
+# 		frontier = deque()
 
+# 		#Run dfs until find solution
+# 		while(1):
 
+# 			#Frontier as a stack with deque implementation (append left, pop left)
+			
+# 			frontier_set = set()
 
+# 			frontier.appendleft(initState)
+# 			#frontier_set.add(str(initState.boardConfig))
 
+# 			#explored = set()
 
 
+# 			#Update the max "depth" or cost the dfs should reach
+# 			cost_limit +=1
 
+# 			print(cost_limit)
 
 
+# 			#Run dfs
+# 			while len(frontier) != 0:
 
+# 				#Update max fringe size
+# 				if len(frontier) > data.max_fringe_size:
+# 					data.max_fringe_size = len(frontier)
 
+# 				state = frontier.popleft()
+# 				#frontier_set.remove(str(state.boardConfig))
 
+# 				#Add the current state to the explored set
+# 				#explored.add(str(state.boardConfig))
 
+# 				#Test if current state is the goal state
+# 				if self.goalTest(state.boardConfig):
+				
+# 					data.cost_of_path = self.getPath(state, data.path_to_goal)
 
+# 					#Account for an edge case of max search depth
+# 					if data.cost_of_path == 1:
+# 						data.max_search_depth = 1
+					
+# 					#Set search_depth to pathCost as cost is number of edges (deep)
+# 					data.search_depth = data.cost_of_path
 
+# 					#Only set the current fringe_size when we found the goal state
+# 					data.fringe_size = len(frontier)
 
+# 					#To be an expanded node, you first have to be explored. Only 
+# 					# the goal-state node will have returned before being explored.
+# 					data.nodes_expanded = len(explored) - 1
 
+# 					return data
 
 
+# 				#If current node is not in goal state, expand it
+# 				childStates = self.spawnChildrenStates(state)
 
 
+# 				if state.depth + 1 > data.max_search_depth:
+# 					data.max_search_depth  = state.depth + 1
 
+				
 
 
 
+# 				#Keep track of the min element in the stack and that
+# 				# min of the thing that didnt work is the new limit
+# 				#The minimum of the heuristics that were not expected and that is the new limit
+				
 
+# 					explored = set()
+# 					parentNode = child.parent
+# 					while parentNode != None:
+# 						explored.add(str(parentNode.boardConfig))
+# 						parentNode = parentNode.parent
+				
+# 				for child in reversed(childStates):
+					
 
 
+# 					child.cost = self.totalCostFunction(child)
 
+# 					if str(child.boardConfig) not in explored:# and str(child.boardConfig) not in frontier_set:
+# 						if child.cost <= cost_limit:
+# 							frontier.appendleft(child)
+# 							#frontier_set.add(str(child.boardConfig))
 
+# 			#else:
+# 			#newcost = min(cost_limit, child.cost)
+# 			#cost_limit = newcost
 
 
-"""
-		A-Star Search implemented using a priority queue.
-		Heuristic: Manhattan priority function- 
-			the sum of the distances of the tiles from their goal positions.
-		Note: Blank space is not considered an actual tile here.
-		Note: state.boardConfig is of type list.
-	
 
-	
-		ALGORITHM:
 
-		G Function: The physical euclidean distance function. Calculates the 
-			number of steps from the root-node to the current state.
 
-		H Function: The Heuristic function. This calculates the 
-			Euclidean(Manhattan) distance of each ith tile to the ith index.
-			This is clearly imperfect information as each distance calculation 
-			doesn't account for the other tiles movement. This is to say that it
-			 is an optimistic Heuristic, in that the actual path cost could 
-			 likely be more expensive than the summation of distances.
+	# def idaSearch(self, initState):
+	# 	"""
+	# 	IDA* search. This takes advantage of iterative deepening to reduce
+	# 	 space complexity and consequently time complexity.
+	# 	 Note: IDA* uses f-cost rather than depth as the cutoff value 
+	# 	"""
 
-		g(n): cost to reach node n
-		h(n): cost to get from n to the goal
-		f(n) = g(n) + h(n)
+	# 	data = DataContainer()
 
+	# 	cost_limit = self.totalCostFunction(initState)
 
+	# 	frontier = deque()
 
+	# 	#Run dfs until find solution
+	# 	while(1):
 
+	# 		#Frontier as a stack with deque implementation (append left, pop left)
+			
+	# 		frontier_set = set()
 
+	# 		frontier.appendleft(initState)
+	# 		#frontier_set.add(str(initState.boardConfig))
 
+	# 		#explored = set()
 
 
-		1. Spawn children nodes. Check the f function of each node and insert 
-			into the priority queue.
+	# 		#Update the max "depth" or cost the dfs should reach
+	# 		cost_limit +=1
 
-		2. Use decreaseKey
+	# 		print(cost_limit)
 
-		3. Check for duplicate states
 
-		In the PriorityQueue order by this tuple: (distance, udlr, uniqueID)
+	# 		#Run dfs
+	# 		while len(frontier) != 0:
 
-		Note: G is provided by ManhattanDist, H is provided by depth.
+	# 			#Update max fringe size
+	# 			if len(frontier) > data.max_fringe_size:
+	# 				data.max_fringe_size = len(frontier)
 
+	# 			state = frontier.popleft()
+	# 			#frontier_set.remove(str(state.boardConfig))
 
+	# 			#Add the current state to the explored set
+	# 			#explored.add(str(state.boardConfig))
 
-		Structure:
+	# 			#Test if current state is the goal state
+	# 			if self.goalTest(state.boardConfig):
+				
+	# 				data.cost_of_path = self.getPath(state, data.path_to_goal)
 
-		Use a tuple within the priority queue uniqueID within the 
+	# 				#Account for an edge case of max search depth
+	# 				if data.cost_of_path == 1:
+	# 					data.max_search_depth = 1
+					
+	# 				#Set search_depth to pathCost as cost is number of edges (deep)
+	# 				data.search_depth = data.cost_of_path
 
+	# 				#Only set the current fringe_size when we found the goal state
+	# 				data.fringe_size = len(frontier)
 
-		"""
+	# 				#To be an expanded node, you first have to be explored. Only 
+	# 				# the goal-state node will have returned before being explored.
+	# 				data.nodes_expanded = len(explored) - 1
 
+	# 				return data
 
 
+	# 			#If current node is not in goal state, expand it
+	# 			childStates = self.spawnChildrenStates(state)
 
 
+	# 			if state.depth + 1 > data.max_search_depth:
+	# 				data.max_search_depth  = state.depth + 1
 
+				
 
 
 
+	# 			#Keep track of the min element in the stack and that
+	# 			# min of the thing that didnt work is the new limit
+	# 			#The minimum of the heuristics that were not expected and that is the new limit
+				
 
+	# 				explored = set()
+	# 				parentNode = child.parent
+	# 				while parentNode != None:
+	# 					explored.add(str(parentNode.boardConfig))
+	# 					parentNode = parentNode.parent
 
+	# 			for child in reversed(childStates):
+					
 
 
+	# 				child.cost = self.totalCostFunction(child)
 
+	# 				if str(child.boardConfig) not in explored:# and str(child.boardConfig) not in frontier_set:
+	# 					if child.cost <= cost_limit:
+	# 						frontier.appendleft(child)
+	# 						#frontier_set.add(str(child.boardConfig))
 
+	# 		#else:
+	# 		#newcost = min(cost_limit, child.cost)
+	# 		#cost_limit = newcost
 
 
 
@@ -1123,303 +1038,17 @@ outputFile.close()
 
 
 
+					# elif str(child.boardConfig) in frontier_set:
+					# 	if child.cost < cost_limit:
 
+					# 		for node in frontier:
+					# 			if str(node.boardConfig) == str(child.boardConfig):
 
+					# 				if child.cost < node.cost:
+					# 					node = child
 
 
 
 
 
-
-
-# '''BFS'''
-
-# def bfsSearch(initState, goalTest):
-# 	'''
-# 	initState: starting State object
-# 	goalTest:  a int list representing a board configuration
-# 	'''
-
-
-# 	#You can hash whole lists
-
-# 	#the left side append and pop from right
-# 	#append the initial state to the board, frontier is a queue
-# 	frontier = deque(board)
-# 	explored = set()
-
-# 	#While the frontier is not empty
-# 	while not len(frontier) == 0:
-# 		state = frontier.pop()
-# 		explored.add(state)
-
-
-
-
-
-
-# #board is an int list, method is a string
-
-# class Solver(board, method):
-
-# 	#Queue implementation
-# 	self.queue = []
-
-
-# 	#Find the index of the blank space
-# 	blankIndex = None
-
-# 	for i in range(0, board):
-# 		if(i == 0):
-# 			blankIndex = i
-
-
-# 	#Create our root node or initial board state
-# 	root = State(originalBoard, 0, )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	
-
-# '''-----------------General classes-----------------'''
-
-# class State:
-# 	'''
-# 	boardConfig:   ordered list of tile numbers
-# 	parent:       State object
-# 	action:       String constrained to "U", "D", "L", "R"
-# 	'''
-
-# 	#Do I really have to pass in n each time? or calc it each time?
-# 	def __init__(self, lastBoardConfig, lastPathCost, lastBlankIndex, action):
-
-# 		self.parent = parent
-# 		self.boardConfig = lastBoardConfig
-# 		self.n = math.sqrt(len(lastBoardConfig)) #GLOBAL Is this necessary?? Repetative?
-
-# 		self.blankIndex = lastBlankIndex
-# 		self.pathCost = lastPathCost + 1
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# '''-----------------General classes-----------------'''
-
-# class State:
-# 	'''
-# 	stateOrder:   ordered list of tile numbers
-# 	parent:       State object
-# 	action:       String constrained to "U", "D", "L", "R"
-# 	'''
-
-# 	#Do I really have to pass in n each time? or calc it each time?
-# 	def __init__(self, stateOrder, parent, action):
-
-# 		self.parent = parent
-# 		self.stateOrder = parent.stateOrder
-# 		self.n = math.sqrt(stateOrder) #GLOBAL Is this necessary?? Repetative?
-
-# 		self.blankIndex = parent.blankIndex
-# 		self.pathCost = parent.pathCost + 1 #uniform ++??
-		
-# 		#Construct a new ordering based on the action
-# 		stateOrder = parent.stateOrder
-# 		self.buildNewState(action)
-		
-
-
-# 	def buildNewState(self, action):
-# 		'''Is this pass by reference method okay???'''
-# 		#This is a single swap of the blank with any adjecent tile
-# 		#Linear(1 Dimensional) representaion of grid movement(2-D)
-
-# 		#blankIndex = parent.blankIndex
-# 		#gridList = parent.stateOrder
-
-# 		if action == "U":
-# 			newIndex = blankIndex - n
-# 		elif action == "D":
-# 			newIndex = blankIndex + n
-# 		elif action == "L":
-# 			newIndex = blankIndex - 1
-# 		else:
-# 			newIndex = blankIndex + 1
-
-
-# 		#I like to think of it as moving "into" the empty space, 
-# 		# and then simply leaving a void behind (constructed this way)
-
-# 		#Shift the value into the blank space (now a duplicate)
-# 		self.stateOrder[blankIndex] = self.stateOrder[newIndex]
-# 		#Remove the duplicate (now the leftover void)
-# 		self.stateOrder[newIndex] = 0
-
-
-
-# 	def spawnChildren():
-# 		print("hello")
-# 	#????
-# 	#Does this now call U D L R on this base board and create 
-# 	# three new instances?
-# 	#Where is the BFS coming in?or is the BFS algo calling this spawn function--
-# 	# I think it is. So should the BFS be in here?
-
-
-
-# '''Solver class'''
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# '''BFS implementation'''
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#Sample input could be: $python driver.py bfs 0,3,2,1
-
-
-
-# #Write results to a file called output.txt
-# outputFile = open('output.txt', 'w')
-
-# #Use .write to write variables out to the file
-# #print("The method is: ", method)
-# #print("The board is: ", board, ". It is of type: ",type(board))
-
-# outputFile.write("hello")
 
