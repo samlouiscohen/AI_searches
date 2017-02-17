@@ -1,2 +1,6 @@
-# AI_searches
-A collection of AI searches from uniformed(BFS/DFS) to informed ones using various heuristics (A*)
+# AI Searching Algorithms
+A collection of both uninformed and informed search algorithms.
+
+
+
+
